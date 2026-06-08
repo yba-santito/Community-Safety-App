@@ -1,16 +1,16 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 
+// 1. Establish the connection to your database file
 const dbPath = path.resolve(__dirname, 'community.db');
-
-// Connect to (or create) the database file
 const db = new sqlite3.Database(dbPath, (err) => {
     if (err) {
-        return console.error('❌ Error opening database:', err.message);
+        console.error('❌ Error opening database:', err.message);
+        process.exit(1); // Stop the script if it can't find/create the DB
+    } else {
+        console.log('🔌 Connected to the SQLite community database.');
     }
-    console.log('📦 Connected to SQLite database.');
 });
-
 db.serialize(() => {
     console.log('🏗️ Setting up database tables...');
 
@@ -95,15 +95,12 @@ db.serialize(() => {
     // ==========================================
     db.get('SELECT COUNT(*) AS count FROM activities', (err, row) => {
         if (err) {
-            console.error('❌ Error checking activities count:', err.message);
-            db.close();
-            return;
+            return console.error('❌ Error checking activities count:', err.message);
         }
         
         if (row.count === 0) {
             console.log('🌱 Tables empty. Seeding mock data...');
 
-            // Wrapping inserts inside a secondary serialize block to ensure sequential execution
             db.serialize(() => {
                 db.run(`INSERT INTO activities (title, organization, age_group, description, location_name, schedule, is_verified) VALUES 
                     ('Youth Coding & Robotics', 'Code4Change', 'Teens', 'Introductory Python and basic building blocks', 'Main Library Hall', 'Wednesdays 16:00', 1),
@@ -120,7 +117,11 @@ db.serialize(() => {
                     ('Scheduled Water Maintenance', 'Water supply will be restricted this Thursday from 08:00 to 14:00 for pipe upgrades.', 'Municipality', 'Urgent'),
                     ('Neighborhood Watch General Meeting', 'Join us at the community hall this Friday at 18:00 to discuss new street patrol rotations.', 'Neighborhood Watch', 'Normal')`);
 
-                // 💡 The db.close() instruction is tied directly to the callback of the absolute last seed insertion
+                // 🚨 FIX 1: Explicit baseline telemetry seeds for the Safety Feed
+                db.run(`INSERT INTO crime_spottings (incident_type, description, location_description, latitude, longitude, severity_level, spotted_at) VALUES 
+                    ('Suspicious Activity', 'Unrecognized individual checking gate latch mechanisms and loitering near substation perimeter.', 'Sector 4 Power Substation', -26.1255, 27.9850, 'Medium', datetime('now', '-2 hours')),
+                    ('Infrastructure Damage', 'Main street illumination array shattered at the intersection, leaving walking paths dark.', '5th Avenue Corner', -26.1220, 27.9890, 'Low', datetime('now', '-1 day'))`);
+
                 db.run(`INSERT OR IGNORE INTO users (id, email, display_name, role) VALUES 
                     ('uid_resident_123', 'john@neighborhood.com', 'John Doe', 'resident'),
                     ('uid_admin_456', 'admin_sarah@community.org', 'Sarah Jenkins', 'admin'),
@@ -129,25 +130,15 @@ db.serialize(() => {
                     if (err) {
                         console.error('❌ Error seeding users:', err.message);
                     } else {
-                        console.log('🏁 Database successfully seeded!');
+                        console.log('🏁 Database tracking logs successfully initialized!');
                     }
-                    
-                    // Safe to close here: Seeding is 100% complete
-                    db.close((closeErr) => {
-                        if (closeErr) console.error('❌ Error closing database:', closeErr.message);
-                        console.log('🔒 Database configuration finalized safely.');
-                    });
+                    // 🚨 FIX 2: Removed db.close() from here to keep the active database channel open for API calls
                 });
             });
 
         } else {
-            console.log('⏩ Database already contains records. Skipping seed step.');
-            
-            // Safe to close here: No seeding paths needed to execute
-            db.close((closeErr) => {
-                if (closeErr) console.error('❌ Error closing database:', closeErr.message);
-                console.log('🔒 Database configuration finalized safely.');
-            });
+            console.log('⏩ Logs detected. Retaining database structural persistence.');
+            // 🚨 FIX 3: Removed db.close() from here as well to preserve the pipeline state
         }
     });
 });

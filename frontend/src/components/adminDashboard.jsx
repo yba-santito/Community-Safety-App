@@ -39,15 +39,28 @@ export default function AdminDashboard() {
         const result = await res.json();
         setAnnouncements(result.data || []);
       } 
-      else if (activeTab === 'crime') {
-        // This endpoint requires admin credentials
-        const res = await fetch('http://localhost:5000/api/admin/crime-spottings', {
-          headers: { 'x-user-id': currentPersona.id }
-        });
-        const result = await res.json();
-        if (!res.ok) throw new Error(result.error || 'Failed to pull secure safety log.');
-        setCrimes(result.data || []);
-      }
+else if (activeTab === 'crime') {
+  // This endpoint requires admin credentials
+  const res = await fetch('http://localhost:5000/api/admin/crime-spottings', {
+    headers: { 'x-user-id': currentPersona.id }
+  });
+  
+  // 🛡️ CRITICAL SAFETIE: Check if the server response failed BEFORE trying to parse JSON
+  if (!res.ok) {
+    const rawErrorPayload = await res.text();
+    
+    // If the server dumped an HTML page, give us a clean message instead of crashing
+    const parsedErrorMessage = rawErrorPayload.includes('<!DOCTYPE')
+      ? `Backend returned an HTML Error Page (Status: ${res.status}). Check terminal logs.`
+      : rawErrorPayload;
+
+    throw new Error(parsedErrorMessage);
+  }
+
+  // Safe to parse now that we know it's a 200 OK success channel
+  const result = await res.json();
+  setCrimes(result.data || []);
+}
     } catch (err) {
       setSystemMessage({ type: 'error', text: err.message });
     } finally {

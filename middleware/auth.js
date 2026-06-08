@@ -4,15 +4,14 @@ const dbPath = path.resolve(__dirname, '../community.db');
 
 // Checkpoint 1: Is the user logged in at all?
 const requireLogin = (req, res, next) => {
-    // We intercept a temporary custom header for tracking identity until Firebase is linked
     const userId = req.headers['x-user-id'];
 
     if (!userId) {
         return res.status(401).json({ error: 'Unauthorized: Access denied. Missing user context.' });
     }
 
-    req.userId = userId; // Attach the identifier to the request context
-    next(); // Pass control to the next function
+    req.userId = userId; 
+    next(); 
 };
 
 // Checkpoint 2: Is the user authorized as an Admin or Superadmin?
@@ -23,24 +22,28 @@ const requireAdmin = (req, res, next) => {
         return res.status(401).json({ error: 'Unauthorized: Access denied. Missing user context.' });
     }
 
+    // Connect to DB
     const db = new sqlite3.Database(dbPath);
 
-    // Look up the user's role directly in our SQLite database
     db.get('SELECT role FROM users WHERE id = ?', [userId], (err, row) => {
-        db.close(); // Always close database handles immediately to avoid leaks
+        db.close(); 
 
+        // 🛡️ FIX: We must log the ACTUAL database error so we aren't debugging blind
         if (err) {
-            return res.status(500).json({ error: 'Internal Server Error during authorization.' });
+            console.error('🛑 [AUTH DB ERROR]:', err.message);
+            return res.status(500).json({ 
+                error: 'Internal Server Error during authorization.',
+                details: err.message // Send the real error to the frontend network tab too
+            });
         }
 
         if (!row) {
-            return res.status(403).json({ error: 'Forbidden: User identity not found.' });
+            return res.status(403).json({ error: 'Forbidden: User identity not found in database.' });
         }
 
-        // Evaluate if the profile holds adequate operational clearance
         if (row.role === 'admin' || row.role === 'superadmin') {
             req.userRole = row.role;
-            next(); // Clear access checkpoint! Proceed to the route handler.
+            next(); 
         } else {
             res.status(403).json({ error: `Forbidden: Clear access denied. Role '${row.role}' lacks privileges.` });
         }
