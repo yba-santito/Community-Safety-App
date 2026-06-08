@@ -1,16 +1,18 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const bcrypt = require('bcrypt'); // 👈 1. Import bcrypt
 
 // 1. Establish the connection to your database file
 const dbPath = path.resolve(__dirname, 'community.db');
 const db = new sqlite3.Database(dbPath, (err) => {
     if (err) {
         console.error('❌ Error opening database:', err.message);
-        process.exit(1); // Stop the script if it can't find/create the DB
+        process.exit(1); 
     } else {
         console.log('🔌 Connected to the SQLite community database.');
     }
 });
+
 db.serialize(() => {
     console.log('🏗️ Setting up database tables...');
 
@@ -79,11 +81,12 @@ db.serialize(() => {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
 
-    // 6. USERS
+    // 6. USERS (👈 2. Added the password column here)
     db.run(`CREATE TABLE IF NOT EXISTS users (
         id TEXT PRIMARY KEY,
         email TEXT UNIQUE NOT NULL,
         display_name TEXT,
+        password TEXT NOT NULL, 
         role TEXT DEFAULT 'resident',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
@@ -117,28 +120,37 @@ db.serialize(() => {
                     ('Scheduled Water Maintenance', 'Water supply will be restricted this Thursday from 08:00 to 14:00 for pipe upgrades.', 'Municipality', 'Urgent'),
                     ('Neighborhood Watch General Meeting', 'Join us at the community hall this Friday at 18:00 to discuss new street patrol rotations.', 'Neighborhood Watch', 'Normal')`);
 
-                // 🚨 FIX 1: Explicit baseline telemetry seeds for the Safety Feed
                 db.run(`INSERT INTO crime_spottings (incident_type, description, location_description, latitude, longitude, severity_level, spotted_at) VALUES 
                     ('Suspicious Activity', 'Unrecognized individual checking gate latch mechanisms and loitering near substation perimeter.', 'Sector 4 Power Substation', -26.1255, 27.9850, 'Medium', datetime('now', '-2 hours')),
                     ('Infrastructure Damage', 'Main street illumination array shattered at the intersection, leaving walking paths dark.', '5th Avenue Corner', -26.1220, 27.9890, 'Low', datetime('now', '-1 day'))`);
 
-                db.run(`INSERT OR IGNORE INTO users (id, email, display_name, role) VALUES 
-                    ('uid_resident_123', 'john@neighborhood.com', 'John Doe', 'resident'),
-                    ('uid_admin_456', 'admin_sarah@community.org', 'Sarah Jenkins', 'admin'),
-                    ('uid_super_789', 'super_ceo@platform.com', 'Mogau Kganana', 'superadmin')`, 
-                [], (err) => {
-                    if (err) {
-                        console.error('❌ Error seeding users:', err.message);
-                    } else {
-                        console.log('🏁 Database tracking logs successfully initialized!');
+                // 👈 3. Hash the password BEFORE inserting the users
+                const defaultPassword = 'password123';
+                const saltRounds = 10;
+
+                bcrypt.hash(defaultPassword, saltRounds, (hashErr, hashedPassword) => {
+                    if (hashErr) {
+                        return console.error('❌ Error hashing default password:', hashErr.message);
                     }
-                    // 🚨 FIX 2: Removed db.close() from here to keep the active database channel open for API calls
+
+                    // Notice we use parameterized inputs (?) to inject the hashedPassword safely
+                    db.run(`INSERT OR IGNORE INTO users (id, email, display_name, password, role) VALUES 
+                        ('uid_resident_123', 'john@neighborhood.com', 'John Doe', ?, 'resident'),
+                        ('uid_admin_456', 'admin_sarah@community.org', 'Sarah Jenkins', ?, 'admin'),
+                        ('uid_super_789', 'super_ceo@platform.com', 'Mogau Kganana', ?, 'superadmin')`, 
+                    [hashedPassword, hashedPassword, hashedPassword], (err) => {
+                        if (err) {
+                            console.error('❌ Error seeding users:', err.message);
+                        } else {
+                            console.log('🏁 Database tracking logs successfully initialized!');
+                            console.log('🔑 Default login password for all seeded users is: password123');
+                        }
+                    });
                 });
             });
 
         } else {
             console.log('⏩ Logs detected. Retaining database structural persistence.');
-            // 🚨 FIX 3: Removed db.close() from here as well to preserve the pipeline state
         }
     });
 });

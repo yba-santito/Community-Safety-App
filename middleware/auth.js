@@ -1,53 +1,35 @@
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
-const dbPath = path.resolve(__dirname, '../community.db');
+const jwt = require('jsonwebtoken');
+const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_development_key_123';
 
-// Checkpoint 1: Is the user logged in at all?
 const requireLogin = (req, res, next) => {
-    const userId = req.headers['x-user-id'];
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1]; 
 
-    if (!userId) {
-        return res.status(401).json({ error: 'Unauthorized: Access denied. Missing user context.' });
+    if (!token) {
+        return res.status(401).json({ error: 'Unauthorized: Access denied. Missing token.' });
     }
 
-    req.userId = userId; 
-    next(); 
+    jwt.verify(token, JWT_SECRET, (err, decodedPayload) => {
+        if (err) {
+            console.error('🛑 [AUTH TOKEN ERROR]:', err.message);
+            return res.status(403).json({ error: 'Forbidden: Invalid or expired session.' });
+        }
+
+        req.user = decodedPayload;
+        next(); 
+    });
 };
 
-// Checkpoint 2: Is the user authorized as an Admin or Superadmin?
+// requireAdmin now assumes requireLogin has ALREADY run successfully
 const requireAdmin = (req, res, next) => {
-    const userId = req.headers['x-user-id'];
+    // Defensively check that req.user exists and grab the role
+    const role = req.user?.role;
 
-    if (!userId) {
-        return res.status(401).json({ error: 'Unauthorized: Access denied. Missing user context.' });
+    if (role === 'admin' || role === 'superadmin') {
+        next(); 
+    } else {
+        res.status(403).json({ error: `Forbidden: Clear access denied. Role '${role || 'unknown'}' lacks privileges.` });
     }
-
-    // Connect to DB
-    const db = new sqlite3.Database(dbPath);
-
-    db.get('SELECT role FROM users WHERE id = ?', [userId], (err, row) => {
-        db.close(); 
-
-        // 🛡️ FIX: We must log the ACTUAL database error so we aren't debugging blind
-        if (err) {
-            console.error('🛑 [AUTH DB ERROR]:', err.message);
-            return res.status(500).json({ 
-                error: 'Internal Server Error during authorization.',
-                details: err.message // Send the real error to the frontend network tab too
-            });
-        }
-
-        if (!row) {
-            return res.status(403).json({ error: 'Forbidden: User identity not found in database.' });
-        }
-
-        if (row.role === 'admin' || row.role === 'superadmin') {
-            req.userRole = row.role;
-            next(); 
-        } else {
-            res.status(403).json({ error: `Forbidden: Clear access denied. Role '${row.role}' lacks privileges.` });
-        }
-    });
 };
 
 module.exports = { requireLogin, requireAdmin };
