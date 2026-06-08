@@ -442,11 +442,12 @@ import YouthActivities from './components/YouthActivities';
 import BroadcastController from './components/BroadcastController';
 import SafetyFeedManager from './components/SafetyFeedManager';
 import CentersManager from './components/CentersManager';
+import SystemOverview from './components/SystemOverview';
+import LiveIncidentMap from './components/LiveIncidentMap'; // 👈 1. Import it
 
 export default function AdminDashboard() {
   const [token, setToken] = useState(localStorage.getItem('adminToken') || null);
-  const [activeTab, setActiveTab] = useState('activities');
-
+  const [activeTab, setActiveTab] = useState('overview');
   const handleLogout = () => {
     setToken(null);
     localStorage.removeItem('adminToken');
@@ -460,14 +461,14 @@ export default function AdminDashboard() {
   if (!token) {
     return <AuthGateway onLoginSuccess={handleLoginSuccess} />;
   }
-
-  const tabs = [
+const tabs = [
+    { id: 'overview', label: '📊 System Overview' },
     { id: 'activities', label: '🎯 Youth Activities' },
     { id: 'announcements', label: '📢 Broadcasts' },
     { id: 'crime', label: '🚨 Safety Feed' },
-    { id: 'centers', label: '🛠️ Empowerment Centers' }
+    { id: 'centers', label: '🛠️ Empowerment Centers' },
+    { id: 'map', label: '🌍 Live Map' } // 👈 2. Add the tab
   ];
-
   return (
     <div style={{ padding: '24px', fontFamily: 'system-ui, sans-serif', backgroundColor: '#f9fafb', minHeight: '100vh', color: '#111827' }}>
       
@@ -501,12 +502,14 @@ export default function AdminDashboard() {
         ))}
       </div>
 
-      <div>
+<div>
+        {activeTab === 'overview' && <SystemOverview token={token} onLogout={handleLogout} />}
         {activeTab === 'activities' && <YouthActivities token={token} onLogout={handleLogout} />}
         {activeTab === 'announcements' && <BroadcastController token={token} onLogout={handleLogout} />}
         {activeTab === 'crime' && <SafetyFeedManager token={token} onLogout={handleLogout} />}
         {activeTab === 'centers' && <CentersManager token={token} onLogout={handleLogout} />}
-      </div>
+        {activeTab === 'map' && <LiveIncidentMap token={token} onLogout={handleLogout} />} // 👈 3. Add the view
+    </div>
     </div>
   );
 }

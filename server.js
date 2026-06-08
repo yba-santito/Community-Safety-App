@@ -186,6 +186,64 @@ app.get('/api/empowerment-centers', (req, res) => {
     });
 });
 
+// ==========================================
+// SYSTEM TELEMETRY & ANALYTICS PIPELINE
+// ==========================================
+app.get('/api/admin/telemetry', requireAdmin, async (req, res) => {
+    try {
+        // Wrap SQLite callbacks in Promises so we can execute them concurrently
+        const getCrimeStats = new Promise((resolve, reject) => {
+            db.all(`SELECT severity_level, COUNT(*) as count FROM crime_spottings GROUP BY severity_level`, [], (err, rows) => {
+                if (err) reject(err);
+                else resolve(rows);
+            });
+        });
+
+        const getActiveActivities = new Promise((resolve, reject) => {
+            db.get(`SELECT COUNT(*) as count FROM activities WHERE is_verified = 1`, [], (err, row) => {
+                if (err) reject(err);
+                else resolve(row ? row.count : 0);
+            });
+        });
+
+        const getActiveBroadcasts = new Promise((resolve, reject) => {
+            db.get(`SELECT COUNT(*) as count FROM announcements`, [], (err, row) => {
+                if (err) reject(err);
+                else resolve(row ? row.count : 0);
+            });
+        });
+
+        const getTotalCenters = new Promise((resolve, reject) => {
+            db.get(`SELECT COUNT(*) as count FROM empowerment_centers`, [], (err, row) => {
+                if (err) reject(err);
+                else resolve(row ? row.count : 0);
+            });
+        });
+
+        // Fire all database queries at the exact same time for maximum speed
+        const [crimeStats, activitiesCount, broadcastsCount, centersCount] = await Promise.all([
+            getCrimeStats, 
+            getActiveActivities, 
+            getActiveBroadcasts, 
+            getTotalCenters
+        ]);
+        
+        res.json({
+            data: {
+                crime_distribution: crimeStats,
+                metrics: {
+                    activities: activitiesCount,
+                    broadcasts: broadcastsCount,
+                    centers: centersCount
+                }
+            }
+        });
+    } catch (err) {
+        console.error('Telemetry Error:', err.message);
+        res.status(500).json({ error: 'Failed to aggregate system telemetry.' });
+    }
+});
+
 app.get('/api/announcements', (req, res) => {
     const sql = 'SELECT * FROM announcements ORDER BY priority DESC, created_at DESC';
     db.all(sql, [], (err, rows) => {

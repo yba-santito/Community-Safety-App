@@ -1,6 +1,6 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
-const bcrypt = require('bcrypt'); // 👈 1. Import bcrypt
+const bcrypt = require('bcrypt'); 
 
 // 1. Establish the connection to your database file
 const dbPath = path.resolve(__dirname, 'community.db');
@@ -81,7 +81,7 @@ db.serialize(() => {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
 
-    // 6. USERS (👈 2. Added the password column here)
+    // 6. USERS 
     db.run(`CREATE TABLE IF NOT EXISTS users (
         id TEXT PRIMARY KEY,
         email TEXT UNIQUE NOT NULL,
@@ -94,7 +94,7 @@ db.serialize(() => {
     console.log('✅ Tables checked/created successfully.');
 
     // ==========================================
-    // SEED DATA MANAGEMENT
+    // SEED DATA MANAGEMENT: JOBURG SOUTH GRID
     // ==========================================
     db.get('SELECT COUNT(*) AS count FROM activities', (err, row) => {
         if (err) {
@@ -102,29 +102,40 @@ db.serialize(() => {
         }
         
         if (row.count === 0) {
-            console.log('🌱 Tables empty. Seeding mock data...');
+            console.log('🌱 Tables empty. Seeding Joburg South operational grid...');
 
             db.serialize(() => {
+                // 1. Activities across the basin
                 db.run(`INSERT INTO activities (title, organization, age_group, description, location_name, schedule, is_verified) VALUES 
-                    ('Youth Coding & Robotics', 'Code4Change', 'Teens', 'Introductory Python and basic building blocks', 'Main Library Hall', 'Wednesdays 16:00', 1),
-                    ('After-School Homework Club', 'Community Library', '6-12 years', 'Quiet study space with peer tutors.', 'Central Public Library', 'Mon-Thu 15:00 - 17:00', 1)`);
+                    ('Youth Coding & Robotics', 'Code4Change', 'Teens', 'Introductory Python and basic building blocks.', 'Rotunda Park Hall, Turffontein', 'Wednesdays 16:00', 1),
+                    ('Rosettenville Soccer Clinic', 'Joburg South Sports', '10-15 years', 'After-school sports and teamwork development.', 'Rosettenville Sports Grounds', 'Tue & Thu 15:30', 1),
+                    ('Community Art Workshop', 'The Hill Creatives', 'All Ages', 'Painting and community mural planning.', 'The Hill Recreation Centre', 'Saturdays 10:00', 1)`);
 
-                db.run(`INSERT INTO empowerment_centers (center_name, focus_area, address, contact_number) VALUES 
-                    ('Apex Vocational Centre', 'Trade Skills & Mentorship', '45 Industrial Ave', '011-555-0192')`);
+                // 2. Empowerment Centers
+                db.run(`INSERT INTO empowerment_centers (center_name, focus_area, address, latitude, longitude, contact_number) VALUES 
+                    ('South Skills Vocational', 'Trade Skills', '120 Turf Club Street, Turffontein', -26.2389, 28.0461, '011-555-0192'),
+                    ('Kenilworth Youth Hub', 'Digital Literacy', '45 Main Street, Kenilworth', -26.2485, 28.0310, '011-555-0200'),
+                    ('Chrisville Support Deck', 'Mentorship & Counseling', '12 Rifle Range Rd, Chrisville', -26.2415, 28.0180, '011-555-0441')`);
 
+                // 3. Facilities
                 db.run(`INSERT INTO facilities (facility_name, facility_type, address, latitude, longitude, operating_hours) VALUES 
-                    ('Greenwood Community Park', 'Park', '12 Urban Green Way', -26.1234, 27.9876, '06:00 - 18:00'),
-                    ('St. Jude Community Hospital', 'Hospital', '100 Medical Drive', -26.1240, 27.9900, '24/7')`);
+                    ('South Rand Hospital', 'Hospital', 'Friars Hill Rd, The Hill', -26.2519, 28.0538, '24/7'),
+                    ('Rosettenville Police Station', 'Security', 'Geranium St, Rosettenville', -26.2470, 28.0515, '24/7'),
+                    ('Wemmer Pan Recreation', 'Park', 'Pioneer Park', -26.2280, 28.0530, '06:00 - 18:00')`);
 
+                // 4. Announcements
                 db.run(`INSERT INTO announcements (title, content, author_type, priority) VALUES 
-                    ('Scheduled Water Maintenance', 'Water supply will be restricted this Thursday from 08:00 to 14:00 for pipe upgrades.', 'Municipality', 'Urgent'),
-                    ('Neighborhood Watch General Meeting', 'Join us at the community hall this Friday at 18:00 to discuss new street patrol rotations.', 'Neighborhood Watch', 'Normal')`);
+                    ('Scheduled Power Outage', 'City Power maintenance will affect Chrisville and Kenilworth this Sunday from 06:00 to 14:00.', 'City Power', 'Urgent'),
+                    ('Neighborhood Watch Meeting', 'Join us at the Rosettenville hall to discuss new street patrol rotations.', 'Joburg South CPF', 'Normal')`);
 
+                // 5. Crime Spottings (Distributed across the suburbs)
                 db.run(`INSERT INTO crime_spottings (incident_type, description, location_description, latitude, longitude, severity_level, spotted_at) VALUES 
-                    ('Suspicious Activity', 'Unrecognized individual checking gate latch mechanisms and loitering near substation perimeter.', 'Sector 4 Power Substation', -26.1255, 27.9850, 'Medium', datetime('now', '-2 hours')),
-                    ('Infrastructure Damage', 'Main street illumination array shattered at the intersection, leaving walking paths dark.', '5th Avenue Corner', -26.1220, 27.9890, 'Low', datetime('now', '-1 day'))`);
+                    ('Suspicious Activity', 'Unrecognized individuals checking gate latch mechanisms.', 'Turffontein Racecourse Outer Wall', -26.2410, 28.0430, 'Medium', datetime('now', '-2 hours')),
+                    ('Cable Theft', 'Active tampering with the mini-substation box reported by residents.', 'Donnelly St, Kenilworth', -26.2490, 28.0350, 'High', datetime('now', '-5 hours')),
+                    ('Vandalism', 'Graffiti and broken streetlights along the main walking route.', 'Mabel St, Rosettenville', -26.2550, 28.0520, 'Low', datetime('now', '-1 day')),
+                    ('Suspicious Vehicle', 'White panel van idling near the community center for over two hours.', 'Rifle Range Rd, Chrisville', -26.2405, 28.0200, 'Medium', datetime('now', '-30 minutes'))`);
 
-                // 👈 3. Hash the password BEFORE inserting the users
+                // 6. Secure Users
                 const defaultPassword = 'password123';
                 const saltRounds = 10;
 
@@ -133,7 +144,6 @@ db.serialize(() => {
                         return console.error('❌ Error hashing default password:', hashErr.message);
                     }
 
-                    // Notice we use parameterized inputs (?) to inject the hashedPassword safely
                     db.run(`INSERT OR IGNORE INTO users (id, email, display_name, password, role) VALUES 
                         ('uid_resident_123', 'john@neighborhood.com', 'John Doe', ?, 'resident'),
                         ('uid_admin_456', 'admin_sarah@community.org', 'Sarah Jenkins', ?, 'admin'),
@@ -142,7 +152,7 @@ db.serialize(() => {
                         if (err) {
                             console.error('❌ Error seeding users:', err.message);
                         } else {
-                            console.log('🏁 Database tracking logs successfully initialized!');
+                            console.log('🏁 Joburg South tracking logs successfully initialized!');
                             console.log('🔑 Default login password for all seeded users is: password123');
                         }
                     });

@@ -5,10 +5,13 @@
   "dependencies": {
     "axios": "^1.17.0",
     "expo": "~56.0.9",
+    "expo-location": "~56.0.16",
+    "expo-secure-store": "~56.0.4",
     "expo-status-bar": "~56.0.4",
     "expo-symbols": "~56.0.6",
     "react": "19.2.3",
-    "react-native": "0.85.3"
+    "react-native": "0.85.3",
+    "react-native-maps": "1.27.2"
   },
   "scripts": {
     "start": "expo start",

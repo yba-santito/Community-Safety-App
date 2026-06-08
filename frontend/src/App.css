@@ -16,7 +16,16 @@
     outline-offset: 2px;
   }
 }
+/* src/index.css */
+.leaflet-container {
+    height: 100%;
+    width: 100%;
+}
 
+/* Fixes marker icon paths if they don't load */
+.leaflet-marker-icon, .leaflet-marker-shadow {
+    display: block !important;
+}
 .hero {
   position: relative;
 
