@@ -1,4 +1,4 @@
-import AdminDashboard from './components/adminDashboard'
+import AdminDashboard from './AdminDashboard'
 import './App.css'
 
 function App() {
