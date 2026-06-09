@@ -11,6 +11,19 @@ export default defineConfig({
       'react-dom': path.resolve('./node_modules/react-dom')
     }
   },
+  server: {
+    proxy: {
+      // Intercept any local request starting with /api and send it to Express
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
+  },
+  build: {
+    outDir: 'build', 
+  },
   optimizeDeps: {
     include: ['react', 'react-dom', 'recharts']
   }

@@ -1,7 +1,8 @@
-require('dotenv').config(); // Load environment variables from .env file
+require('dotenv').config(); 
 
 const express = require('express');
-const sqlite3 = require('sqlite3').verbose();
+// Drop-in replacement for sqlite3 that talks to Turso
+const sqlite3 = require('@libsql/sqlite3').verbose(); 
 const jwt = require('jsonwebtoken');
 const path = require('path');
 const cors = require('cors');
@@ -18,16 +19,24 @@ const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_development_key_123';
 app.use(cors()); 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'client', 'build')));
+const tursoUrl = process.env.TURSO_DATABASE_URL;
+const tursoToken = process.env.TURSO_AUTH_TOKEN;
 
 // ==========================================
 // 2. CONNECT TO SQLITE DATABASE
 // ==========================================
-const dbPath = path.resolve(__dirname, 'community.db');
-const db = new sqlite3.Database(dbPath, (err) => {
+const connectionString = tursoUrl && tursoToken
+    ? `${tursoUrl}?authToken=${tursoToken}`
+    : path.resolve(__dirname, 'community.db');
+
+const db = new sqlite3.Database(connectionString, (err) => {
     if (err) {
         console.error('🛑 Error opening database:', err.message);
     } else {
-        console.log('✅ Connected to the SQLite community database.');
+        const mode = tursoUrl ? 'Turso Cloud (Ohio)' : 'Local File';
+        console.log(`✅ Connected to the database via [${mode}].`);
+        // Enforce WAL mode for live concurrency
+        db.run('PRAGMA journal_mode = WAL;');
     }
 });
 

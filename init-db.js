@@ -1,15 +1,25 @@
-const sqlite3 = require('sqlite3').verbose();
+require('dotenv').config();
+const sqlite3 = require('@libsql/sqlite3').verbose();
 const path = require('path');
 const bcrypt = require('bcrypt'); 
 
 // 1. Establish the connection to your database file
-const dbPath = path.resolve(__dirname, 'community.db');
-const db = new sqlite3.Database(dbPath, (err) => {
+const tursoUrl = process.env.TURSO_DATABASE_URL;
+const tursoToken = process.env.TURSO_AUTH_TOKEN;
+
+// Logic: Use Cloud URL if available, otherwise fallback to local file
+const connectionString = tursoUrl && tursoToken
+    ? `${tursoUrl}?authToken=${tursoToken}`
+    : path.resolve(__dirname, 'community.db');
+
+const db = new sqlite3.Database(connectionString, (err) => {
     if (err) {
-        console.error('❌ Error opening database:', err.message);
-        process.exit(1); 
+        console.error('🛑 Error opening database:', err.message);
     } else {
-        console.log('🔌 Connected to the SQLite community database.');
+        const mode = tursoUrl ? 'Turso Cloud (Ohio)' : 'Local File';
+        console.log(`✅ Connected to the database via [${mode}].`);
+        // Enforce WAL mode for live concurrency
+        db.run('PRAGMA journal_mode = WAL;');
     }
 });
 

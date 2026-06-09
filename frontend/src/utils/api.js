@@ -1,5 +1,4 @@
-// src/utils/api.js
-
+// Updated api.js
 export const fetchWithAuth = async (endpoint, token, options = {}) => {
   const headers = {
     'Content-Type': 'application/json',
@@ -7,9 +6,10 @@ export const fetchWithAuth = async (endpoint, token, options = {}) => {
     ...options.headers
   };
 
-  const res = await fetch(`http://localhost:5000${endpoint}`, { ...options, headers });
+  // Drop the localhost prefix. 
+  // The browser will automatically prepend the current domain.
+  const res = await fetch(endpoint, { ...options, headers });
   
-  // Intercept expired or invalid tokens automatically
   if (res.status === 401 || res.status === 403) {
     throw new Error('AUTH_EXPIRED');
   }
